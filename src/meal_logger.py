@@ -5,8 +5,11 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from google import genai
 from google.genai import types
+from database import Database
 
 load_dotenv()
+
+db = Database()
 
 class MealData(BaseModel):
     meal_type: str = Field(description="breakfast, lunch, dinner, snack, or full_day")
@@ -85,11 +88,24 @@ def main():
         user_input = input("You: ").strip()
         if user_input.lower() in ['quit', 'exit', 'q']:
             break
-
+        if user_input.lower() == 'summary':
+            totals = db.get_daily_macro_totals()
+            print(f"""
+        📊 Today's Summary:
+           Meals logged: {totals['meal_count']}
+           Total Protein:  {totals['protein']}g
+           Total Carbs:    {totals['carbs']}g
+           Total Fats:     {totals['fats']}g
+           Total Calories: {totals['calories']} kcal
+            """)
+            continue
         print(" Analyzing...", end="\r")
 
         meal_data = extract_meal_info(user_input)
         if meal_data:
+            saved = db.save_meal(meal_data)
+            if saved:
+                print("Meal Saved")
             print(give_feedback(meal_data))
             print(" Sync complete.\n")
         else:
